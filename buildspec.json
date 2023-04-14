@@ -81,8 +81,8 @@
             "qtVersion": 6
         }
     },
-    "name": "obs-plugintemplate",
+    "name": "obs-pypylogger",
     "version": "1.0.0",
-    "author": "Your Name Here",
-    "email": "me@mymailhost.com"
+    "author": "Roughy",
+    "email": "mdawn700@gmail.com"
 }

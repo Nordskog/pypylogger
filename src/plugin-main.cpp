@@ -17,16 +17,60 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 */
 
 #include <obs-module.h>
+#include <obs-frontend-api.h>
+#include <obs.h>
+#include<functional> 
 
 #include "plugin-macros.generated.h"
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE(PLUGIN_NAME, "en-US")
 
+// Callback for when a recording stops
+obs_frontend_event_cb EventHandler = [](enum obs_frontend_event event, void*) 
+{
+	switch (event) 
+	{
+		case OBS_FRONTEND_EVENT_RECORDING_STARTED: 
+		{
+			blog(LOG_INFO, "Record start!");
+			break;
+		}
+
+		case OBS_FRONTEND_EVENT_RECORDING_PAUSED: 
+		{
+
+		}
+
+		case OBS_FRONTEND_EVENT_RECORDING_UNPAUSED: 
+		{
+			break;
+		}
+
+		case OBS_FRONTEND_EVENT_RECORDING_STOPPED: 
+		{
+			blog(LOG_INFO, "Record stopped!");
+			break;
+		}
+
+		case OBS_FRONTEND_EVENT_EXIT:
+		{
+			break;
+		}
+
+		default:
+			break;
+		
+	}
+};
+
 bool obs_module_load(void)
 {
 	blog(LOG_INFO, "plugin loaded successfully (version %s)",
 	     PLUGIN_VERSION);
+
+	obs_frontend_add_event_callback(EventHandler, NULL);
+
 	return true;
 }
 
