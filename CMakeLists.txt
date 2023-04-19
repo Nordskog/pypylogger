@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.16...3.21)
 
+# Set vcpkg for a few libraries 
+set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake"
+  CACHE STRING "Vcpkg toolchain file")
+
 # Change obs-plugintemplate to your plugin's name in a machine-readable format (e.g.:
 # obs-myawesomeplugin) and set
 project(obs-pypylogger VERSION 1.0.0)
@@ -29,6 +33,15 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/pypy_utils.cpp
   src/pypy_utils.hpp
 )
+
+# Curl
+find_package(CURL CONFIG REQUIRED)
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE CURL::libcurl)
+
+# JSON lib
+set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/installed/x64-windows") # Shouldn't need this but I do
+find_package(nlohmann_json CONFIG REQUIRED)
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE nlohmann_json::nlohmann_json)
 
 # Import libobs as main plugin dependency
 find_package(libobs REQUIRED)
