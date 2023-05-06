@@ -20,9 +20,11 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 #include <obs-frontend-api.h>
 #include <obs.h>
 #include <filesystem>
+#include <nlohmann/json.hpp>
 
 #include "pypylog_entry.hpp"
 #include "pypy_utils.hpp"
+#include "pypy_web.hpp"
 
 #include "plugin-macros.generated.h"
 #include "plugin-main.hpp"
@@ -181,7 +183,95 @@ void read_files( vector< pair< string,chrono::system_clock::time_point> > logFil
 	}
 }
 
+std::regex YOUTUBE_REGEX_PATTERN(R"((?:http?s:\/\/)(?:www.)?(?:(?:youtube.com\/watch\?v=)|(?:youtu.be\/))([\w\d_-]+))");
 
+bool queryYoutubeTitle(string youtubeVideoId, string& titleOut)
+{
+	string api_key = YOUTUBE_API_KEY;
+
+	std::ostringstream oss;
+	oss 
+	<< R"(https://youtube.googleapis.com/youtube/v3/videos?part=snippet%2CcontentDetails%2Cstatistics&id=)" 
+	<< youtubeVideoId 
+	<< "&key="
+	<< api_key;
+
+	string lookupUrl = oss.str();
+	blog( LOG_INFO, "Will query url: %s", lookupUrl.c_str() );
+
+	
+	nlohmann::json res;
+	if ( pypyweb::httpGetJson( lookupUrl, res))
+	{
+		if (!res.contains("items"))
+		{
+			blog( LOG_INFO, "Json missing [items]" );
+			return false;
+		}
+			
+		if (!(res["items"].size() > 0))
+		{
+			blog( LOG_INFO, "Json had items but was empty" );
+			return false;
+		}
+		
+		if (!res["items"][0].contains("snippet"))
+		{
+			blog( LOG_INFO, "Json missing [snippet]" );
+			return false;
+		}
+
+		if (!res["items"][0]["snippet"].contains("title"))
+		{
+			blog( LOG_INFO, "Json missing [title]" );
+			return false;
+		}
+
+		string title = res["items"][0]["snippet"]["title"];
+		blog( LOG_INFO, "Got title: %s", title.c_str() );
+		titleOut = title;
+
+		return true;
+	}
+	
+
+	return false;
+}
+
+bool populateEntryTitle( PyPylogEntry& entry )
+{
+	std::string title = entry.title;
+	std::smatch match;
+
+	if (regex_search(entry.url, match, YOUTUBE_REGEX_PATTERN))
+	{
+		std::string video_id = match[1].str();
+
+		blog( LOG_INFO, "Want title for Youtube ID: %s", video_id.c_str() );
+		if ( queryYoutubeTitle( video_id, title ) )
+		{
+			entry.title = title;
+
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void lookup_titles(std::vector<PyPylogEntry>& logEntries )
+{
+	blog( LOG_INFO, "Entry count is: %i", logEntries.size() );	
+
+	for( auto& entry : logEntries)
+	{
+		// Custom song, lookup youtube title
+		if (entry.title.find("Playing Custom URL: ") != std::string::npos)
+		{
+			populateEntryTitle(entry);
+		}
+	}
+}
 
 void do_stuff()
 {
@@ -262,11 +352,9 @@ void do_stuff()
 	{
 		blog( LOG_INFO, "%s", entry.toString().c_str() );	
 	}
-}
 
-void lookup_titles(std::vector<PyPylogEntry>& logEntries )
-{
-	
+	lookup_titles(logEntries);
+
 }
 
 // Callback for when a recording stops
@@ -305,7 +393,10 @@ obs_frontend_event_cb EventHandler = [](enum obs_frontend_event event, void*)
 			// TODO remove testing: 
 			recordEndTime = vrchatLogTimeToTimePoint("2023.04.13 01:40:51");
 
-			do_stuff();
+			thread t(do_stuff);
+			t.detach();
+
+			//do_stuff();
 			//get_files();
 			//read_file();
 	

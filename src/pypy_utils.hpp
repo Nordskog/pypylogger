@@ -3,10 +3,8 @@
 #include <chrono>
 #include <string>
 
-using namespace std;
+std::chrono::system_clock::time_point vrchatLogTimeToTimePoint( std::string _time );
+std::chrono::system_clock::time_point vrchatLogFilenameTimeToTimePoint( std::string _time );
 
-chrono::system_clock::time_point vrchatLogTimeToTimePoint( string _time );
-chrono::system_clock::time_point vrchatLogFilenameTimeToTimePoint( string _time );
-
-long long durationToSeconds( chrono::system_clock::duration dur  );
-string formatDuration( chrono::system_clock::duration dur  );
+long long durationToSeconds( std::chrono::system_clock::duration dur  );
+std::string formatDuration( std::chrono::system_clock::duration dur  );

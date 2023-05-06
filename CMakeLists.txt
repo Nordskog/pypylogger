@@ -9,6 +9,10 @@ set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/scripts/buildsystems
 project(obs-pypylogger VERSION 1.0.0)
 add_library(${CMAKE_PROJECT_NAME} MODULE)
 
+# Read api key into var
+file(READ "apikey.txt" YOUTUBE_API_KEY)
+add_compile_definitions(YOUTUBE_API_KEY="${YOUTUBE_API_KEY}")
+
 # Replace `Your Name Here` with the name (yours or your organization's) you want to see as the
 # author of the plugin (in the plugin's metadata itself and in the installers)
 set(PLUGIN_AUTHOR "Your Name Here")
@@ -32,6 +36,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/pypylog_entry.hpp
   src/pypy_utils.cpp
   src/pypy_utils.hpp
+  src/pypy_web.cpp
+  src/pypy_web.hpp
 )
 
 # Curl
