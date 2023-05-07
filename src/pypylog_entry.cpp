@@ -47,12 +47,6 @@ const std::regex YOUTUBE_REGEX_PATTERN(R"((?:http?s:\/\/)(?:www.)?(?:(?:youtube.
         return this->title.find("Playing Custom URL:") != string::npos;
     };
 
-    long long PyPylogEntry::getTimeAsUnixTimestamp()
-    {
-        chrono::milliseconds ms = chrono::duration_cast<chrono::milliseconds>(this->time.time_since_epoch());
-        return ms.count() / (long long)1000;
-    }
-
     bool PyPylogEntry::isBeforeStart()
     {
         return this->videoTime < chrono::system_clock::duration::zero();

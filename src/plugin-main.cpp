@@ -139,8 +139,6 @@ void read_files( vector< pair< string,chrono::system_clock::time_point> > logFil
 							PyPylogEntry newEntry = PyPylogEntry(time, url, title);
 							newEntry.setVideoStartTime(recordStartTime);
 
-							//blog( LOG_INFO, "Epoch time is: %i", newEntry.getTimeAsUnixTimestamp() );
-
 							if (prevEntry != nullptr)
 							{
 								// same url, same title
@@ -449,12 +447,12 @@ obs_frontend_event_cb EventHandler = [](enum obs_frontend_event event, void*)
 	{
 		case OBS_FRONTEND_EVENT_RECORDING_STARTED: 
 		{
-			blog(LOG_INFO, "Record start!");
-
 			recordStartTime = std::chrono::system_clock::now();
 
 			// TODO remove testing: 
 			recordStartTime = vrchatLogTimeToTimePoint("2023.04.12 23:15:10");
+
+			blog(LOG_INFO, "Record start: %lld ", timestampToUnixTime(recordStartTime));
 
 			break;
 		}
@@ -471,12 +469,13 @@ obs_frontend_event_cb EventHandler = [](enum obs_frontend_event event, void*)
 
 		case OBS_FRONTEND_EVENT_RECORDING_STOPPED: 
 		{
-			blog(LOG_INFO, "Record stopped!");
-
 			recordEndTime = std::chrono::system_clock::now();
 
 			// TODO remove testing: 
 			recordEndTime = vrchatLogTimeToTimePoint("2023.04.13 01:40:51");
+
+			blog(LOG_INFO, "Record start: %lld ", timestampToUnixTime(recordStartTime));
+			blog(LOG_INFO, "Record end: %lld ", timestampToUnixTime(recordEndTime));
 
 			thread t(do_stuff);
 			t.detach();

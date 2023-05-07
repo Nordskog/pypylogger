@@ -22,7 +22,11 @@ chrono::system_clock::time_point vrchatLogFilenameTimeToTimePoint( string _time 
     return chrono::system_clock::from_time_t(mktime(&tm));
 };
 
-
+long long timestampToUnixTime( chrono::system_clock::time_point time)
+{
+    chrono::milliseconds ms = chrono::duration_cast<chrono::milliseconds>(time.time_since_epoch());
+    return ms.count() / (long long)1000;
+}
 
 long long durationToSeconds( chrono::system_clock::duration dur  )
 {
