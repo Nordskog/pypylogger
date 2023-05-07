@@ -2,12 +2,18 @@
 
 #include <chrono>
 #include <string>
+#include <regex>
+
+
+extern const std::regex YOUTUBE_REGEX_PATTERN;
+
 
 class PyPylogEntry
 {
     public:
     std::chrono::system_clock::time_point time;
     std::chrono::system_clock::duration videoTime;
+    std::string youtubeId;
     std::string url;
     std::string title;
 
@@ -23,7 +29,9 @@ class PyPylogEntry
     bool isBeforeStart();
 
     void setVideoStartTime( std::chrono::system_clock::time_point startTime );
+    void PyPylogEntry::populateYoutubeId();
 
     private:
+
 
 };

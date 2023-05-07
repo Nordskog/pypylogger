@@ -21,6 +21,7 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 #include <obs.h>
 #include <filesystem>
 #include <nlohmann/json.hpp>
+#include <unordered_map>
 
 #include "pypylog_entry.hpp"
 #include "pypy_utils.hpp"
@@ -183,16 +184,19 @@ void read_files( vector< pair< string,chrono::system_clock::time_point> > logFil
 	}
 }
 
-std::regex YOUTUBE_REGEX_PATTERN(R"((?:http?s:\/\/)(?:www.)?(?:(?:youtube.com\/watch\?v=)|(?:youtu.be\/))([\w\d_-]+))");
-
-bool queryYoutubeTitle(string youtubeVideoId, string& titleOut)
+/**
+ * videoIds may be a single id, or multiple comma-delimited ids
+*/
+bool queryYoutubeTitlesSingle(string videoIds, unordered_map<string,string>& idTitleMap )
 {
+	blog( LOG_INFO, "getting title of IDs: %s", videoIds.c_str() );
+
 	string api_key = YOUTUBE_API_KEY;
 
 	std::ostringstream oss;
 	oss 
 	<< R"(https://youtube.googleapis.com/youtube/v3/videos?part=snippet%2CcontentDetails%2Cstatistics&id=)" 
-	<< youtubeVideoId 
+	<< videoIds 
 	<< "&key="
 	<< api_key;
 
@@ -208,67 +212,102 @@ bool queryYoutubeTitle(string youtubeVideoId, string& titleOut)
 			blog( LOG_INFO, "Json missing [items]" );
 			return false;
 		}
-			
-		if (!(res["items"].size() > 0))
-		{
-			blog( LOG_INFO, "Json had items but was empty" );
-			return false;
-		}
 		
-		if (!res["items"][0].contains("snippet"))
+		nlohmann::json items = res["items"];
+		for(int i = 0; i < items.size(); i++)
 		{
-			blog( LOG_INFO, "Json missing [snippet]" );
-			return false;
-		}
+			nlohmann::json item = items[i];
 
-		if (!res["items"][0]["snippet"].contains("title"))
-		{
-			blog( LOG_INFO, "Json missing [title]" );
-			return false;
-		}
+			if (!item.contains("id"))
+			{
+				blog( LOG_INFO, "Json missing [id]" );
+				continue;
+			}
 
-		string title = res["items"][0]["snippet"]["title"];
-		blog( LOG_INFO, "Got title: %s", title.c_str() );
-		titleOut = title;
+			string id = item["id"];
+
+			if (!item.contains("snippet"))
+			{
+				blog( LOG_INFO, "Json missing [snippet]" );
+				continue;
+			}
+
+			nlohmann::json snippet = item["snippet"];
+
+			if (!snippet.contains("title") )
+			{
+				blog( LOG_INFO, "Json missing [title]" );
+				continue;
+			}
+
+			string title = snippet["title"];
+
+			idTitleMap[id] = title;
+
+		}
 
 		return true;
 	}
 	
-
 	return false;
+
+
 }
 
-bool populateEntryTitle( PyPylogEntry& entry )
+void queryYoutubeTitlesAll(unordered_map<string,string>& idTitleMap)
 {
-	std::string title = entry.title;
-	std::smatch match;
-
-	if (regex_search(entry.url, match, YOUTUBE_REGEX_PATTERN))
+	ostringstream oss;
+	int iterator = 0;
+	for (auto& entry : idTitleMap)
 	{
-		std::string video_id = match[1].str();
+		oss << entry.first << ",";
+		iterator++;
 
-		blog( LOG_INFO, "Want title for Youtube ID: %s", video_id.c_str() );
-		if ( queryYoutubeTitle( video_id, title ) )
+		// looks like youtube may allow up to 50 results, so split into chunks
+		if (iterator >= 49)
 		{
-			entry.title = title;
+			// Lookup however many we have
+			queryYoutubeTitlesSingle(oss.str(), idTitleMap);
 
-			return true;
+			// clear and repeat
+			oss.clear();
+			iterator = 0;
 		}
 	}
 
-	return false;
+	// Handle any remaining entries below the 49 entry count
+	if (oss.tellp() > 0)
+	{
+		queryYoutubeTitlesSingle(oss.str(), idTitleMap);
+	}
 }
 
-void lookup_titles(std::vector<PyPylogEntry>& logEntries )
+void populateCustomUrlTitles(std::vector<PyPylogEntry>& logEntries )
 {
 	blog( LOG_INFO, "Entry count is: %i", logEntries.size() );	
 
+	// Chuck all the video ids we want to look up into a map
+	unordered_map<string,string> idTitleMap;
+
 	for( auto& entry : logEntries)
 	{
-		// Custom song, lookup youtube title
-		if (entry.title.find("Playing Custom URL: ") != std::string::npos)
+		if (entry.needsTitleLookup() && !entry.youtubeId.empty() )
 		{
-			populateEntryTitle(entry);
+			// Leave url as default "title"
+			idTitleMap[entry.youtubeId] = entry.url;
+		}
+	}
+
+	// Query youtube for titles
+	queryYoutubeTitlesAll(idTitleMap);
+
+	// Populate entries from results
+	for( auto& entry : logEntries)
+	{
+		if (entry.needsTitleLookup() && !entry.youtubeId.empty() )
+		{
+			// Can assume that key will exist, since we populated it this way too
+			entry.title = idTitleMap.at(entry.youtubeId);
 		}
 	}
 }
@@ -331,6 +370,7 @@ void do_stuff()
 			// copy its values over to our start entry
 			startEntry.title = preStartEntry.title;
 			startEntry.url = preStartEntry.url;	
+			startEntry.populateYoutubeId();
 		}
 
 		// Erase everything up to the first in-session entry. exclusive index I guess?
@@ -346,14 +386,15 @@ void do_stuff()
 	}
 
 
-	blog( LOG_INFO, "Printing parsed." );	
+	blog( LOG_INFO, "Looking up youtube urls." );	
 
+	populateCustomUrlTitles(logEntries);
+
+	blog( LOG_INFO, "Printing parsed." );	
 	for (auto entry : logEntries)
 	{
 		blog( LOG_INFO, "%s", entry.toString().c_str() );	
 	}
-
-	lookup_titles(logEntries);
 
 }
 
