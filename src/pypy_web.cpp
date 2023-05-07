@@ -77,8 +77,6 @@ bool pypyweb::httpGetJson(string url, nlohmann::json& resOut)
         return false;
     }
 
-    blog( LOG_INFO, "Response content type: %s", contentTypePointer );
-
     string contentType = contentTypePointer;
 
     if ( contentType.find("application/json") != std::string::npos)

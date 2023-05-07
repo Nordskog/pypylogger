@@ -143,14 +143,30 @@ void read_files( vector< pair< string,chrono::system_clock::time_point> > logFil
 
 							if (prevEntry != nullptr)
 							{
-								//TODO: When one of the generic background music videos is played, the title is not updated from the previous video.
-								// Maybe check if url is different but title is not, and treat it as a custom url instead
-
+								// same url, same title
 								if ( prevEntry->url == newEntry.url && prevEntry->title == newEntry.title )
 								{
 									// Skip item if same url and title as previous
 									// There will be duplicates in the log, and we don't want to cut if it's the same song anyway
 									continue;
+								}
+
+								// same title, different url
+								if ( prevEntry->url != newEntry.url && prevEntry->title == newEntry.title )
+								{
+									// After a period of inactivity, pypy will start playing a filler video with music.
+									// The log entry for this will have the correct url ( youtube ), but the title is not updated.
+									// This seems to occur after roughly 8 minutes, which is way longer than most songs.
+									// If entry is same title as previous entry, but has a different url, and there is more than 6 minutes 
+									// since the previous video started playing, give it a dummy custom url title so the title will be grabbed from youtube later.
+									if ( (newEntry.time - prevEntry->time) > chrono::minutes(6) )
+									{
+										blog( LOG_INFO, "Same title but different url, treating as custom url: %s", newEntry.toString().c_str());
+
+										ostringstream oss;
+										oss << "Playing Custom URL: " << newEntry.url;
+										newEntry.title = oss.str();
+									}
 								}
 							}
 
@@ -312,6 +328,33 @@ void populateCustomUrlTitles(std::vector<PyPylogEntry>& logEntries )
 	}
 }
 
+void filterZeroDurationEntries( std::vector<PyPylogEntry>& entries )
+{
+	// Occasionally there will be an extra log entry at the same time as a new video plays.
+	// This entry will use a song that was played previously with a mismatched requester.
+	// Since they occur at the same moment as a new video actually plays, the entry will be 0 seconds.
+	vector<PyPylogEntry>::iterator it = entries.begin();
+
+	while (it != entries.end())
+	{
+		vector<PyPylogEntry>::iterator itnext = it + 1;
+		if (itnext != entries.end())
+		{
+			chrono::system_clock::duration timeDiff = itnext->time - it->time;
+			
+			// Nuke entry if less than 2 seconds to next entry
+			if ( timeDiff < chrono::seconds(2))
+			{
+				blog(LOG_INFO, "Found very short entry. Deleting: %s", it->toString().c_str());
+				it = entries.erase(it);
+				continue;
+			}
+		}
+
+		++it;
+	}
+}
+
 void do_stuff()
 {
 	auto logFiles = get_files();
@@ -385,6 +428,7 @@ void do_stuff()
 		logEntries.insert(logEntries.begin(), startEntry);	// Sue me
 	}
 
+	filterZeroDurationEntries(logEntries);
 
 	blog( LOG_INFO, "Looking up youtube urls." );	
 
