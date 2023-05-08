@@ -41,8 +41,9 @@ std::chrono::time_point recordStartTime = std::chrono::system_clock::now();
 std::chrono::time_point recordEndTime = std::chrono::system_clock::now();
 
 // 2023.04.12 23:11:37 Log        -  [VRCX] VideoPlay(VRDancing) "https://www.youtube.com/watch?v=28_GkwWU7-o",0,0,3654,"Roughy~","[ Michael Jackson: The Experience ] Smooth Criminal - Michael Jackson"
+// 2023.05.08 23:25:04 Log        -  [VRCX] VideoPlay(VRDancing) "https://www.youtube.com/watch?v=vTxiANDw1rc",0.9666666,3696.3,,"",""
 // /(\S+\s\S+)\s+\w+\s+-\s+\[VRCX\]\s+VideoPlay\(VRDancing\)\s+"([^"]+)"[\d\.\+\-,]+"([^"]+)","([^"]+)"/
-std::regex log_entry_regex(R"!((\S+\s\S+)\s+\w+\s+-\s+\[VRCX\]\s+VideoPlay\(VRDancing\)\s+"([^"]+)"[\d\.\+\-,]+"([^"]+)","([^"]+)")!");
+std::regex log_entry_regex(R"!((\S+\s\S+)\s+\w+\s+-\s+\[VRCX\]\s+VideoPlay\(VRDancing\)\s+"([^"]+)"[\d\.\+\-,]*"([^"]*)","([^"]*)")!");
 
 // output_log_2023-04-12_23-08-58.txt
 // /output_log_(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})\.txt/

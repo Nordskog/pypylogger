@@ -44,7 +44,7 @@ const std::regex YOUTUBE_REGEX_PATTERN(R"((?:http?s:\/\/)(?:www.)?(?:(?:youtube.
 
     bool PyPylogEntry::needsTitleLookup()
     {
-        return this->title.find("Playing Custom URL:") != string::npos;
+        return this->title.empty() || this->title.find("Playing Custom URL:") != string::npos;
     };
 
     bool PyPylogEntry::isBeforeStart()
