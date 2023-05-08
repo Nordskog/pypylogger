@@ -51,9 +51,37 @@ std::regex log_file_regex(R"!(output_log_(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})\.
 
 auto PREV_SESSION_CUTOFF = chrono::minutes(15);
 
+const bool USE_TEST_DATA = false;
+
+filesystem::path getLogdirPath()
+{
+	if (USE_TEST_DATA)
+	{
+		return "C:\\Users\\Roughy\\workspace\\pypylogger\\data\\logs";
+	}
+	else
+	{
+		const char* userProfilePath = std::getenv("USERPROFILE");
+		if (!userProfilePath)
+		{
+				blog( LOG_INFO, "Could not get USERPROFILE !");
+				return "";
+		}
+
+		std::filesystem::path path(userProfilePath);
+		path /= "AppData";
+		path /= "LocalLow";
+		path /= "VRChat";
+		path /= "VRChat";
+
+		return path;
+	}
+}
+
 vector< pair< string,chrono::system_clock::time_point> > get_files()
 {
-	auto VRCHAT_LOGS_DIR = "C:\\Users\\Roughy\\workspace\\pypylogger\\data\\logs";
+	auto VRCHAT_LOGS_DIR = getLogdirPath();
+	blog( LOG_INFO, "Reading logs from: %s", VRCHAT_LOGS_DIR.string().c_str() );
 
 	vector< pair< string,chrono::system_clock::time_point> > logFiles;
 
@@ -354,6 +382,80 @@ void filterZeroDurationEntries( std::vector<PyPylogEntry>& entries )
 	}
 }
 
+// Get filename
+// Call after recording stopped apparently
+// Mostly stolen from OBS-ChapterMarker
+const std::tuple<string,string> GetCurrentRecordingFilename()
+{
+	auto recording = obs_frontend_get_recording_output();
+
+	if (!recording)
+		return {"",""};;
+	auto settings = obs_output_get_settings(recording);
+
+	// mimicks the behavior of BasicOutputHandler::GetRecordingFilename :
+	// try to fetch the path from the "url" property, then try "path" if the first one
+	// didn't yield any result
+	auto item = obs_data_item_byname(settings, "url");
+	if (!item) {
+		item = obs_data_item_byname(settings, "path");
+		if (!item) {
+			return {"",""};
+		}
+	}
+
+	string filepath = obs_data_item_get_string(item);
+
+	// Extract filename without extension
+	size_t start = filepath.find_last_of("/\\") + 1;
+	size_t end = filepath.find_last_of(".") - start;
+
+	string recordingName = filepath.substr( start, end );
+	string recordingFolder = filepath.substr(0, start);
+
+	return {recordingName, recordingFolder};
+}
+
+void writeOutput(std::vector<PyPylogEntry> logEntries)
+{
+	if (logEntries.empty())
+	{
+		blog(LOG_INFO, "No relevant log entries, will not generate log");
+		return;
+	}
+
+	// Oddly you do this after stopping the recording?
+	auto [recordingFilename, recordingFolder] = GetCurrentRecordingFilename();
+	blog(LOG_INFO, "Recording filenme is: %s", recordingFilename.c_str());
+	blog(LOG_INFO, "Recording folder  is: %s", recordingFolder.c_str());
+
+	if ( recordingFilename.empty() )
+	{
+		blog(LOG_INFO, "Recording filename was empty, will generate one.");
+	}
+
+	if (recordingFolder.empty())
+	{
+		blog(LOG_INFO, "Recording folder name was empty, can't write log file!");
+		return;
+	}
+
+	string pypyLogOutputFilename = (ostringstream() << recordingFolder << recordingFilename << ".pypylog").str();
+
+	blog(LOG_INFO, "Pypylog filename is: %s", pypyLogOutputFilename.c_str());
+
+	std::ofstream logFile(pypyLogOutputFilename);
+
+	for (auto entry : logEntries)
+	{
+		logFile << entry.toLogString() << endl;
+	}
+
+	logFile.close();
+
+	blog(LOG_INFO, "Finished writing log");
+}
+
 void do_stuff()
 {
 	auto logFiles = get_files();
@@ -439,6 +541,8 @@ void do_stuff()
 		blog( LOG_INFO, "%s", entry.toString().c_str() );	
 	}
 
+	writeOutput(logEntries);
+
 }
 
 // Callback for when a recording stops
@@ -451,7 +555,8 @@ obs_frontend_event_cb EventHandler = [](enum obs_frontend_event event, void*)
 			recordStartTime = std::chrono::system_clock::now();
 
 			// TODO remove testing: 
-			recordStartTime = vrchatLogTimeToTimePoint("2023.04.12 23:15:10");
+			if (USE_TEST_DATA)
+				recordStartTime = vrchatLogTimeToTimePoint("2023.04.12 23:15:10");
 
 			blog(LOG_INFO, "Record start: %lld ", timestampToUnixTime(recordStartTime));
 
@@ -473,7 +578,8 @@ obs_frontend_event_cb EventHandler = [](enum obs_frontend_event event, void*)
 			recordEndTime = std::chrono::system_clock::now();
 
 			// TODO remove testing: 
-			recordEndTime = vrchatLogTimeToTimePoint("2023.04.13 01:40:51");
+			if (USE_TEST_DATA)
+				recordEndTime = vrchatLogTimeToTimePoint("2023.04.13 01:40:51");
 
 			blog(LOG_INFO, "Record start: %lld ", timestampToUnixTime(recordStartTime));
 			blog(LOG_INFO, "Record end: %lld ", timestampToUnixTime(recordEndTime));

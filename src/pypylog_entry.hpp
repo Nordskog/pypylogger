@@ -22,6 +22,7 @@ class PyPylogEntry
     PyPylogEntry(std::chrono::system_clock::time_point _time, std::string _url, std::string _title );
     
     std::string toString();
+    std::string toLogString();
     bool needsTitleLookup();
 
     std::chrono::system_clock::duration PyPylogEntry::getTimeFrom( std::chrono::system_clock::time_point fromTime );

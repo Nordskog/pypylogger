@@ -59,6 +59,13 @@ const std::regex YOUTUBE_REGEX_PATTERN(R"((?:http?s:\/\/)(?:www.)?(?:(?:youtube.
         return ss.str();
     }
 
+    string PyPylogEntry::toLogString()
+    {
+        stringstream ss;
+        ss << formatDuration(videoTime) << " " << this->title; 
+        return ss.str();
+    }
+
     void PyPylogEntry::setVideoStartTime( chrono::system_clock::time_point startTime )
     {
         this->videoTime = this->time - startTime;
