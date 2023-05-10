@@ -58,11 +58,11 @@ const bool USE_TEST_DATA = false;
 
 filesystem::path getLogdirPath()
 {
-	//if (USE_TEST_DATA)
-	//{
-	//	return "C:\\Users\\Roughy\\workspace\\pypylogger\\data\\logs";
-	//}
-	//else
+	if (USE_TEST_DATA)
+	{
+		return "C:\\Users\\Roughy\\workspace\\pypylogger\\data\\logs";
+	}
+	else
 	{
 		const char* userProfilePath = std::getenv("USERPROFILE");
 		if (!userProfilePath)
