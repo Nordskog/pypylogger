@@ -1,10 +1,52 @@
 #include <sstream>
 #include <iomanip>
 #include <cmath>
+#include <regex>
+#include <locale>
+#include <codecvt>
+#include <Windows.h>
 
 #include "pypy_utils.hpp"
 
 using namespace std;
+
+std::string getSimpleDate( chrono::system_clock::time_point inputTime)
+{
+    // Convert to a local time_t
+    std::time_t time = std::chrono::system_clock::to_time_t(inputTime);
+
+    // Convert to a tm struct for local time
+    std::tm* tm = std::localtime(&time);
+
+    // Format the date as DD/MM
+    char buffer[6];
+    std::strftime(buffer, sizeof(buffer), "%d-%m", tm);
+
+    return string(buffer);
+}
+
+
+// Convert a string to a wide string in UTF-8 encoding
+std::wstring ConvertUtf8ToWide(const std::string& str)
+{
+    int length =  (int)str.length();
+    int count = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), length, NULL, 0);
+    std::wstring wstr(count, 0);
+    MultiByteToWideChar(CP_UTF8, 0, str.c_str(), length, &wstr[0], count);
+    return wstr;
+}
+
+string cleanFilename(string & filename) 
+{ 
+    std::string illegalChars = "<>:\"/\\|?*";
+    std::string cleanName = filename;
+
+    for (auto c : illegalChars) {
+        std::replace(cleanName.begin(), cleanName.end(), c, '_');
+    }
+
+    return cleanName;
+}
 
 chrono::system_clock::time_point vrchatLogTimeToTimePoint( string _time )
 {

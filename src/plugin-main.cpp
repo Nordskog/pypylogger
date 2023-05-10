@@ -27,6 +27,8 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 #include "pypy_utils.hpp"
 #include "pypy_web.hpp"
 
+#include <cstdlib>
+
 #include "plugin-macros.generated.h"
 #include "plugin-main.hpp"
 
@@ -39,6 +41,7 @@ using namespace std;
 
 std::chrono::time_point recordStartTime = std::chrono::system_clock::now();
 std::chrono::time_point recordEndTime = std::chrono::system_clock::now();
+std::string recordingPrefix = "";
 
 // 2023.04.12 23:11:37 Log        -  [VRCX] VideoPlay(VRDancing) "https://www.youtube.com/watch?v=28_GkwWU7-o",0,0,3654,"Roughy~","[ Michael Jackson: The Experience ] Smooth Criminal - Michael Jackson"
 // 2023.05.08 23:25:04 Log        -  [VRCX] VideoPlay(VRDancing) "https://www.youtube.com/watch?v=vTxiANDw1rc",0.9666666,3696.3,,"",""
@@ -55,11 +58,11 @@ const bool USE_TEST_DATA = false;
 
 filesystem::path getLogdirPath()
 {
-	if (USE_TEST_DATA)
-	{
-		return "C:\\Users\\Roughy\\workspace\\pypylogger\\data\\logs";
-	}
-	else
+	//if (USE_TEST_DATA)
+	//{
+	//	return "C:\\Users\\Roughy\\workspace\\pypylogger\\data\\logs";
+	//}
+	//else
 	{
 		const char* userProfilePath = std::getenv("USERPROFILE");
 		if (!userProfilePath)
@@ -385,12 +388,12 @@ void filterZeroDurationEntries( std::vector<PyPylogEntry>& entries )
 // Get filename
 // Call after recording stopped apparently
 // Mostly stolen from OBS-ChapterMarker
-const std::tuple<string,string> GetCurrentRecordingFilename()
+const std::tuple<string,string,string> GetCurrentRecordingFilename()
 {
 	auto recording = obs_frontend_get_recording_output();
 
 	if (!recording)
-		return {"",""};;
+		return {"","",""};;
 	auto settings = obs_output_get_settings(recording);
 
 	// mimicks the behavior of BasicOutputHandler::GetRecordingFilename :
@@ -400,11 +403,16 @@ const std::tuple<string,string> GetCurrentRecordingFilename()
 	if (!item) {
 		item = obs_data_item_byname(settings, "path");
 		if (!item) {
-			return {"",""};
+			return {"","",""};
 		}
 	}
 
 	string filepath = obs_data_item_get_string(item);
+
+	if (USE_TEST_DATA)
+	{
+		filepath = R"(C:\Users\Roughy\Videos\Captures\2023-05-08 23-47-03.mkv)";
+	}
 
 	// Extract filename without extension
 	size_t start = filepath.find_last_of("/\\") + 1;
@@ -413,10 +421,48 @@ const std::tuple<string,string> GetCurrentRecordingFilename()
 	string recordingName = filepath.substr( start, end );
 	string recordingFolder = filepath.substr(0, start);
 
-	return {recordingName, recordingFolder};
+	return {filepath, recordingName, recordingFolder};
 }
 
-void writeOutput(std::vector<PyPylogEntry> logEntries)
+bool splitSingle(string recordingFullPath, string pypyoutputfolder, PyPylogEntry* current, PyPylogEntry* next)
+{
+	ostringstream oss;
+
+
+	oss 
+	<< "ffmpeg "
+	<< " -ss "
+	<< formatDuration(current->videoTime);
+
+	if (next != nullptr)
+	{
+		oss << " -to "
+		<< formatDuration(next->videoTime);
+	}
+
+	oss 
+	<< " -i "
+	<< "\"" << recordingFullPath << "\""
+	<< " -c copy "
+	<< "\"" << pypyoutputfolder << "\\" << recordingPrefix << " - " << current->title << ".mkv" << "\"";
+	
+
+	string cmd = oss.str();
+
+	blog(LOG_INFO, "Executing command: %s", cmd.c_str());
+
+	int status = _wsystem( ConvertUtf8ToWide(cmd).c_str() );
+
+	if (status != 0) 
+	{
+		blog(LOG_INFO, "Something went wrong splitting recording. Code: %i", status);
+		return false;
+	}
+
+	return true;
+}
+
+void splitClips(std::vector<PyPylogEntry> logEntries)
 {
 	if (logEntries.empty())
 	{
@@ -425,7 +471,7 @@ void writeOutput(std::vector<PyPylogEntry> logEntries)
 	}
 
 	// Oddly you do this after stopping the recording?
-	auto [recordingFilename, recordingFolder] = GetCurrentRecordingFilename();
+	auto [recordingFullPath, recordingFilename, recordingFolder] = GetCurrentRecordingFilename();
 	blog(LOG_INFO, "Recording filenme is: %s", recordingFilename.c_str());
 	blog(LOG_INFO, "Recording folder  is: %s", recordingFolder.c_str());
 
@@ -440,20 +486,40 @@ void writeOutput(std::vector<PyPylogEntry> logEntries)
 		return;
 	}
 
-	string pypyLogOutputFilename = (ostringstream() << recordingFolder << recordingFilename << ".pypylog").str();
-
-	blog(LOG_INFO, "Pypylog filename is: %s", pypyLogOutputFilename.c_str());
-
-	std::ofstream logFile(pypyLogOutputFilename);
-
-	for (auto entry : logEntries)
+	filesystem::path outputFolder = filesystem::path(recordingFolder) / recordingPrefix;
+	if (!filesystem::exists(outputFolder)) 
 	{
-		logFile << entry.toLogString() << endl;
+        filesystem::create_directory(outputFolder);
 	}
 
-	logFile.close();
+	for (int i = 0; i < logEntries.size(); i++)
+	{
+		PyPylogEntry* current = &(logEntries[i]);
+		PyPylogEntry* next = nullptr;
 
-	blog(LOG_INFO, "Finished writing log");
+		// Only set next if there is one
+		if ( i + 1 != logEntries.size())
+		{
+			next = &(logEntries[i+1]);
+		}
+		
+		// Title may contain characters that are not legal in filenames
+		current->title = cleanFilename(current->title);
+
+		if ( !splitSingle(recordingFullPath, outputFolder.string(), current, next) )
+		{
+
+			blog(LOG_INFO, "FFmpeg failed. Probably bad filename, will filter all but ascii");	
+			
+
+			if ( !splitSingle(recordingFullPath, outputFolder.string(), current, next) )
+			{
+				blog(LOG_INFO, "Still failed. You're fucked mate.");	
+			}
+		}
+	}
+
+	blog(LOG_INFO, "Finished splitting recording");
 }
 
 void do_stuff()
@@ -541,7 +607,14 @@ void do_stuff()
 		blog( LOG_INFO, "%s", entry.toString().c_str() );	
 	}
 
-	writeOutput(logEntries);
+	this_thread::sleep_for(chrono::seconds(2));
+
+	// Generate the folder and clip prefix
+	recordingPrefix = (ostringstream() << "PyPy EU Dance Hours - " << getSimpleDate(recordStartTime)).str();
+	blog( LOG_INFO, "Recording prefix will be: %s", recordingPrefix.c_str() );	
+
+	splitClips(logEntries);
+	//writeOutput(logEntries);
 
 }
 
@@ -556,7 +629,7 @@ obs_frontend_event_cb EventHandler = [](enum obs_frontend_event event, void*)
 
 			// TODO remove testing: 
 			if (USE_TEST_DATA)
-				recordStartTime = vrchatLogTimeToTimePoint("2023.04.12 23:15:10");
+				recordStartTime = vrchatLogTimeToTimePoint("2023.05.08 23:47:03");
 
 			blog(LOG_INFO, "Record start: %lld ", timestampToUnixTime(recordStartTime));
 
@@ -579,7 +652,7 @@ obs_frontend_event_cb EventHandler = [](enum obs_frontend_event event, void*)
 
 			// TODO remove testing: 
 			if (USE_TEST_DATA)
-				recordEndTime = vrchatLogTimeToTimePoint("2023.04.13 01:40:51");
+				recordEndTime = vrchatLogTimeToTimePoint("2023.05.08 23:52:03");
 
 			blog(LOG_INFO, "Record start: %lld ", timestampToUnixTime(recordStartTime));
 			blog(LOG_INFO, "Record end: %lld ", timestampToUnixTime(recordEndTime));
