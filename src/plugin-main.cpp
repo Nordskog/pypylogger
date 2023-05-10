@@ -492,6 +492,12 @@ void splitClips(std::vector<PyPylogEntry> logEntries)
         filesystem::create_directory(outputFolder);
 	}
 
+	if (!filesystem::exists(outputFolder)) 
+	{
+		blog(LOG_INFO, "Failed to create output folder!");
+		return;
+	}
+
 	for (int i = 0; i < logEntries.size(); i++)
 	{
 		PyPylogEntry* current = &(logEntries[i]);
@@ -508,14 +514,7 @@ void splitClips(std::vector<PyPylogEntry> logEntries)
 
 		if ( !splitSingle(recordingFullPath, outputFolder.string(), current, next) )
 		{
-
-			blog(LOG_INFO, "FFmpeg failed. Probably bad filename, will filter all but ascii");	
-			
-
-			if ( !splitSingle(recordingFullPath, outputFolder.string(), current, next) )
-			{
-				blog(LOG_INFO, "Still failed. You're fucked mate.");	
-			}
+			blog(LOG_INFO, "FFmpeg failed for some reason. Soz.");	
 		}
 	}
 
