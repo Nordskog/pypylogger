@@ -52,8 +52,12 @@ chrono::system_clock::time_point vrchatLogTimeToTimePoint( string _time )
 {
     // 2023.04.12 23:20:00
     tm tm = {};
+    tm.tm_isdst = -1; // Let the system figure out DST
     stringstream(_time) >> get_time(&tm, "%Y.%m.%d %H:%M:%S");
-    return chrono::system_clock::from_time_t(mktime(&tm));
+
+    std::time_t t = mktime(&tm);
+    std::chrono::system_clock::time_point tp =std::chrono::system_clock::from_time_t(t);
+    return tp;
 };
 
 chrono::system_clock::time_point vrchatLogFilenameTimeToTimePoint( string _time )
