@@ -13,3 +13,4 @@ std::chrono::system_clock::time_point vrchatLogFilenameTimeToTimePoint( std::str
 long long timestampToUnixTime( std::chrono::system_clock::time_point time  );
 long long durationToSeconds( std::chrono::system_clock::duration dur  );
 std::string formatDuration( std::chrono::system_clock::duration dur  );
+std::string timepointToString( std::chrono::system_clock::time_point inputTime );

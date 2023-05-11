@@ -79,6 +79,13 @@ long long durationToSeconds( chrono::system_clock::duration dur  )
     return chrono::duration_cast<chrono::seconds>(dur).count();
 };
 
+string timepointToString( chrono::system_clock::time_point inputTime )
+{
+    std::time_t now_tt = std::chrono::system_clock::to_time_t(inputTime);
+    std::tm tm = *std::localtime(&now_tt);
+
+    return (ostringstream() << std::put_time(&tm, "%c %Z")).str();
+}
 
 string formatDuration( chrono::system_clock::duration dur  )
 {

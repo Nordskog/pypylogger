@@ -200,6 +200,8 @@ void read_files( vector< pair< string,chrono::system_clock::time_point> > logFil
 								}
 							}
 
+							blog( LOG_INFO, "Log entry at %lld, %s", timestampToUnixTime(newEntry.time), timepointToString(newEntry.time).c_str() ) ;	
+
 							if ( newEntry.time > recordEndTime)
 							{
 								blog( LOG_INFO, "Found entry after recording end time. Breaking.");	
@@ -432,7 +434,7 @@ const std::tuple<string,string,string> GetCurrentRecordingFilename()
 
 	if (USE_TEST_DATA)
 	{
-		filepath = R"(C:\Users\Roughy\Videos\Captures\2023-05-08 23-47-03.mkv)";
+		filepath = R"(C:\tempjunk\2023-05-10 19-14-15.mkv)";
 	}
 
 	// Extract filename without extension
@@ -649,10 +651,11 @@ obs_frontend_event_cb EventHandler = [](enum obs_frontend_event event, void*)
 		case OBS_FRONTEND_EVENT_RECORDING_STARTED: 
 		{
 			recordStartTime = std::chrono::system_clock::now();
+			blog(LOG_INFO, "Real start: %lld , %s", timestampToUnixTime(recordStartTime), timepointToString(recordStartTime).c_str() );
 
 			// TODO remove testing: 
 			if (USE_TEST_DATA)
-				recordStartTime = vrchatLogTimeToTimePoint("2023.05.08 23:47:03");
+				recordStartTime = vrchatLogTimeToTimePoint("2023.05.10 20:14:15");
 
 			blog(LOG_INFO, "Record start: %lld ", timestampToUnixTime(recordStartTime));
 
@@ -675,10 +678,10 @@ obs_frontend_event_cb EventHandler = [](enum obs_frontend_event event, void*)
 
 			// TODO remove testing: 
 			if (USE_TEST_DATA)
-				recordEndTime = vrchatLogTimeToTimePoint("2023.05.08 23:52:03");
+				recordEndTime = vrchatLogTimeToTimePoint("2023.05.10 22:23:58");
 
-			blog(LOG_INFO, "Record start: %lld ", timestampToUnixTime(recordStartTime));
-			blog(LOG_INFO, "Record end: %lld ", timestampToUnixTime(recordEndTime));
+			blog(LOG_INFO, "Record start: %lld, %s ", timestampToUnixTime(recordStartTime), timepointToString(recordStartTime).c_str() );
+			blog(LOG_INFO, "Record end: %lld , %s", timestampToUnixTime(recordEndTime), timepointToString(recordEndTime).c_str() );
 
 			thread t(do_stuff);
 			t.detach();
