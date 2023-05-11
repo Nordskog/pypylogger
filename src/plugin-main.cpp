@@ -385,6 +385,27 @@ void filterZeroDurationEntries( std::vector<PyPylogEntry>& entries )
 	}
 }
 
+void handleDuplicates( std::vector<PyPylogEntry>& entries )
+{
+	// Occasionally there will be an extra log entry at the same time as a new video plays.
+	// This entry will use a song that was played previously with a mismatched requester.
+	// Since they occur at the same moment as a new video actually plays, the entry will be 0 seconds.
+
+	std::unordered_map<std::string, int> title_counts;
+
+	for ( auto& entry : entries)
+	{
+		// returns original value, then increments it.
+		// yes, values are initialized to zero.
+		int count = title_counts[entry.title]++;
+
+		if (count > 0)
+		{
+			entry.title = (ostringstream() << entry.title << " (" << std::to_string(count + 1) << ")" ).str();
+		}
+	}
+}
+
 // Get filename
 // Call after recording stopped apparently
 // Mostly stolen from OBS-ChapterMarker
@@ -597,6 +618,7 @@ void do_stuff()
 	}
 
 	filterZeroDurationEntries(logEntries);
+	handleDuplicates(logEntries);
 
 	blog( LOG_INFO, "Looking up youtube urls." );	
 
