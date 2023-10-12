@@ -46,8 +46,8 @@ std::string recordingPrefix = "";
 
 // 2023.04.12 23:11:37 Log        -  [VRCX] VideoPlay(VRDancing) "https://www.youtube.com/watch?v=28_GkwWU7-o",0,0,3654,"Roughy~","[ Michael Jackson: The Experience ] Smooth Criminal - Michael Jackson"
 // 2023.05.08 23:25:04 Log        -  [VRCX] VideoPlay(VRDancing) "https://www.youtube.com/watch?v=vTxiANDw1rc",0.9666666,3696.3,,"",""
-// /(\S+\s\S+)\s+\w+\s+-\s+\[VRCX\]\s+VideoPlay\(VRDancing\)\s+"([^"]+)"[\d\.\+\-,]+"([^"]+)","([^"]+)"/
-std::regex log_entry_regex(R"!((\S+\s\S+)\s+\w+\s+-\s+\[VRCX\]\s+VideoPlay\(VRDancing\)\s+"([^"]+)"[\d\.\+\-,]*"([^"]*)","([^"]*)")!");
+// /(\S+\s\S+)\s+\w+\s+-\s+\[VRCX\]\s+VideoPlay\(VRDancing\)\s+"([^"]+)"[\d\.\+\-,]+"([^"]+)","(.*)"/
+std::regex log_entry_regex(R"!((\S+\s\S+)\s+\w+\s+-\s+\[VRCX\]\s+VideoPlay\(VRDancing\)\s+"([^"]+)"[\d\.\+\-,]*"([^"]*)","(.*)")!");
 
 // output_log_2023-04-12_23-08-58.txt
 // /output_log_(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})\.txt/
@@ -201,7 +201,7 @@ void read_files( vector< pair< string,chrono::system_clock::time_point> > logFil
 								}
 							}
 
-							blog( LOG_INFO, "Log entry at %lld, %s", timestampToUnixTime(newEntry.time), timepointToString(newEntry.time).c_str() ) ;	
+							blog( LOG_INFO, "Log entry at %lld, %s, %s, %s", timestampToUnixTime(newEntry.time), timepointToString(newEntry.time).c_str(), newEntry.title.c_str(), newEntry.url.c_str() ) ;	
 
 							if ( newEntry.time > recordEndTime)
 							{
@@ -433,9 +433,9 @@ const string GetCurrentRecordingFilename()
 
 	string filepath = obs_data_item_get_string(item);
 
-	if (USE_TEST_DATA)
+	//if (USE_TEST_DATA)
 	{
-		filepath = R"(C:\tempjunk\2023-05-10 19-14-15.mkv)";
+		//filepath = R"(C:\tempjunk\2023-05-10 19-14-15.mkv)";
 	}
 
 	return filepath;
@@ -647,6 +647,15 @@ std::vector<PyPylogEntry> getEntries()
 	return std::move( logEntries );
 }
 
+void setTestingTime()
+{
+	if (USE_TEST_DATA)
+		recordEndTime = vrchatLogTimeToTimePoint("2023.10.12 01:00:00");
+
+	if (USE_TEST_DATA)
+		recordStartTime = vrchatLogTimeToTimePoint("2023.10.11 22:00:00");
+}
+
 void splitLastRecording()
 {
 	splitClips(	getEntries(), GetCurrentRecordingFilename());
@@ -654,6 +663,8 @@ void splitLastRecording()
 
 void handleRecordingEnd()
 {
+	setTestingTime();
+	
 	blog(LOG_INFO, "Record start: %lld, %s ", timestampToUnixTime(recordStartTime), timepointToString(recordStartTime).c_str() );
 	blog(LOG_INFO, "Record end: %lld , %s", timestampToUnixTime(recordEndTime), timepointToString(recordEndTime).c_str() );
 
@@ -680,6 +691,8 @@ void handleSplitInputFileRequest( std::string filePath )
 
 	recordStartTime = FILETIMEtoTimePoint(creationTime);
 	recordEndTime = FILETIMEtoTimePoint(fileWriteTime);
+
+	setTestingTime();
 
 	blog(LOG_INFO, "Video start: %lld, %s ", timestampToUnixTime(recordStartTime), timepointToString(recordStartTime).c_str() );
 	blog(LOG_INFO, "Video end: %lld, %s ", timestampToUnixTime(recordEndTime), timepointToString(recordEndTime).c_str() );
@@ -718,11 +731,6 @@ obs_frontend_event_cb EventHandler = [](enum obs_frontend_event event, void*)
 		{
 			recordStartTime = std::chrono::system_clock::now();
 			blog(LOG_INFO, "Real start: %lld , %s", timestampToUnixTime(recordStartTime), timepointToString(recordStartTime).c_str() );
-
-			// TODO remove testing: 
-			if (USE_TEST_DATA)
-				recordStartTime = vrchatLogTimeToTimePoint("2023.09.06 19:11:58");
-
 			blog(LOG_INFO, "Record start: %lld ", timestampToUnixTime(recordStartTime));
 
 			break;
@@ -741,11 +749,6 @@ obs_frontend_event_cb EventHandler = [](enum obs_frontend_event event, void*)
 		case OBS_FRONTEND_EVENT_RECORDING_STOPPED: 
 		{
 			recordEndTime = std::chrono::system_clock::now();
-
-			// TODO remove testing: 
-			if (USE_TEST_DATA)
-				recordEndTime = vrchatLogTimeToTimePoint("2023.09.06 21:08:25");
-
 			handleRecordingEnd();
 	
 			break;
