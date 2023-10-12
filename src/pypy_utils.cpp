@@ -4,11 +4,54 @@
 #include <regex>
 #include <locale>
 #include <codecvt>
-#include <Windows.h>
 
 #include "pypy_utils.hpp"
 
 using namespace std;
+
+#define FILETIME_TO_UNIXTIME(ft) (UINT)((*(LONGLONG*)&(ft)-116444736000000000)/10000000)
+
+chrono::system_clock::duration getVideoDuration(string filePath)
+{
+    // Fuck it I made chatgpt do it
+
+    // Construct the FFmpeg command to get video duration on Windows
+    std::string ffmpegCommand = "ffmpeg -i " + filePath + " 2>&1 | findstr Duration";
+    char buffer[128];
+    std::string durationLine;
+
+    // Execute the FFmpeg command and read the output
+    FILE* pipe = _popen(ffmpegCommand.c_str(), "r");
+    if (pipe) {
+        while (!feof(pipe)) {
+            if (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
+                durationLine = buffer;
+            }
+        }
+        _pclose(pipe);
+    }
+
+    // Extract the duration string from the output
+    size_t start = durationLine.find("Duration: ") + 10;
+    size_t end = durationLine.find(",", start);
+    std::string durationString = durationLine.substr(start, end - start);
+
+    if (!durationString.empty()) {
+        // Parse the duration string and convert it to milliseconds
+        int hours, minutes, seconds, milliseconds;
+        if (sscanf(durationString.c_str(), "%d:%d:%d.%d", &hours, &minutes, &seconds, &milliseconds) == 4) {
+            std::chrono::milliseconds durationInMilliseconds =
+                std::chrono::hours(hours) +
+                std::chrono::minutes(minutes) +
+                std::chrono::seconds(seconds) +
+                std::chrono::milliseconds(milliseconds);
+            return durationInMilliseconds;
+        }
+    }
+
+    // Return zero if the duration couldn't be obtained
+    return std::chrono::milliseconds(0);
+}
 
 std::string getSimpleDate( chrono::system_clock::time_point inputTime)
 {
@@ -59,6 +102,16 @@ chrono::system_clock::time_point vrchatLogTimeToTimePoint( string _time )
     std::chrono::system_clock::time_point tp =std::chrono::system_clock::from_time_t(t);
     return tp;
 };
+
+chrono::system_clock::time_point FILETIMEtoTimePoint( FILETIME time )
+{
+    //long long timeNano = _ULARGE_INTEGER{ time.dwLowDateTime, time.dwHighDateTime }.QuadPart;
+
+    auto msDuration = chrono::seconds{ FILETIME_TO_UNIXTIME(time) } ;
+
+    std::chrono::time_point<std::chrono::system_clock> timePoint(msDuration);
+    return timePoint;
+}
 
 chrono::system_clock::time_point vrchatLogFilenameTimeToTimePoint( string _time )
 {

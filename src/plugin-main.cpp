@@ -18,6 +18,7 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 
 #include <obs-module.h>
 #include <obs-frontend-api.h>
+#include <QFileDialog>
 #include <obs.h>
 #include <filesystem>
 #include <nlohmann/json.hpp>
@@ -57,12 +58,12 @@ auto PREV_SESSION_CUTOFF = chrono::minutes(15);
 const bool USE_TEST_DATA = false;
 
 filesystem::path getLogdirPath()
-{
+{/*
 	if (USE_TEST_DATA)
 	{
 		return "C:\\Users\\Roughy\\workspace\\pypylogger\\data\\logs";
 	}
-	else
+	else*/
 	{
 		const char* userProfilePath = std::getenv("USERPROFILE");
 		if (!userProfilePath)
@@ -411,12 +412,12 @@ void handleDuplicates( std::vector<PyPylogEntry>& entries )
 // Get filename
 // Call after recording stopped apparently
 // Mostly stolen from OBS-ChapterMarker
-const std::tuple<string,string,string> GetCurrentRecordingFilename()
+const string GetCurrentRecordingFilename()
 {
 	auto recording = obs_frontend_get_recording_output();
 
 	if (!recording)
-		return {"","",""};;
+		return {"",""};;
 	auto settings = obs_output_get_settings(recording);
 
 	// mimicks the behavior of BasicOutputHandler::GetRecordingFilename :
@@ -426,7 +427,7 @@ const std::tuple<string,string,string> GetCurrentRecordingFilename()
 	if (!item) {
 		item = obs_data_item_byname(settings, "path");
 		if (!item) {
-			return {"","",""};
+			return {"",""};
 		}
 	}
 
@@ -437,14 +438,19 @@ const std::tuple<string,string,string> GetCurrentRecordingFilename()
 		filepath = R"(C:\tempjunk\2023-05-10 19-14-15.mkv)";
 	}
 
+	return filepath;
+}
+
+const std::tuple<string,string> getDetailedPaths( string filePath )
+{
 	// Extract filename without extension
-	size_t start = filepath.find_last_of("/\\") + 1;
-	size_t end = filepath.find_last_of(".") - start;
+	size_t start = filePath.find_last_of("/\\") + 1;
+	size_t end = filePath.find_last_of(".") - start;
 
-	string recordingName = filepath.substr( start, end );
-	string recordingFolder = filepath.substr(0, start);
+	string recordingName = filePath.substr( start, end );
+	string recordingFolder = filePath.substr(0, start);
 
-	return {filepath, recordingName, recordingFolder};
+	return {recordingName, recordingFolder};
 }
 
 bool splitSingle(string recordingFullPath, string pypyoutputfolder, PyPylogEntry* current, PyPylogEntry* next)
@@ -487,7 +493,7 @@ bool splitSingle(string recordingFullPath, string pypyoutputfolder, PyPylogEntry
 	return true;
 }
 
-void splitClips(std::vector<PyPylogEntry> logEntries)
+void splitClips(std::vector<PyPylogEntry> logEntries, std::string recordingFilepath)
 {
 	if (logEntries.empty())
 	{
@@ -496,7 +502,7 @@ void splitClips(std::vector<PyPylogEntry> logEntries)
 	}
 
 	// Oddly you do this after stopping the recording?
-	auto [recordingFullPath, recordingFilename, recordingFolder] = GetCurrentRecordingFilename();
+	auto [recordingFilename, recordingFolder] =  getDetailedPaths(recordingFilepath);
 	blog(LOG_INFO, "Recording filenme is: %s", recordingFilename.c_str());
 	blog(LOG_INFO, "Recording folder  is: %s", recordingFolder.c_str());
 
@@ -537,7 +543,7 @@ void splitClips(std::vector<PyPylogEntry> logEntries)
 		// Title may contain characters that are not legal in filenames
 		current->title = cleanFilename(current->title);
 
-		if ( !splitSingle(recordingFullPath, outputFolder.string(), current, next) )
+		if ( !splitSingle(recordingFilepath, outputFolder.string(), current, next) )
 		{
 			blog(LOG_INFO, "FFmpeg failed for some reason. Soz.");	
 		}
@@ -546,23 +552,23 @@ void splitClips(std::vector<PyPylogEntry> logEntries)
 	blog(LOG_INFO, "Finished splitting recording");
 }
 
-void do_stuff()
+std::vector<PyPylogEntry> getEntries()
 {
 	auto logFiles = get_files();
+	std::vector<PyPylogEntry> logEntries;
 
 	if (logFiles.empty())
 	{
 		blog(LOG_INFO, "No VRChat logs, returning.");
-		return;
+		return logEntries;
 	}
 	
-	std::vector<PyPylogEntry> logEntries;
 	read_files(logFiles, logEntries);
 
 	if (logEntries.empty())
 	{
 		blog(LOG_INFO, "No PyPy log entries, returning.");
-		return;
+		return logEntries;
 	}
 
 	// Find the first first entr before recordStartTime and set its time to be exactly the same as the start time.
@@ -586,7 +592,7 @@ void do_stuff()
 	{
 		// No valid entries, return
 		blog(LOG_INFO, "No PyPy log entries during recording window");
-		return;
+		return logEntries;
 	}
 
 	// Create an entry for the very beginning
@@ -638,9 +644,69 @@ void do_stuff()
 	recordingPrefix = (ostringstream() << "PyPy EU Dance Hours - " << getSimpleDate(recordStartTime)).str();
 	blog( LOG_INFO, "Recording prefix will be: %s", recordingPrefix.c_str() );	
 
-	splitClips(logEntries);
-	//writeOutput(logEntries);
+	return std::move( logEntries );
+}
 
+void splitLastRecording()
+{
+	splitClips(	getEntries(), GetCurrentRecordingFilename());
+}
+
+void handleRecordingEnd()
+{
+	blog(LOG_INFO, "Record start: %lld, %s ", timestampToUnixTime(recordStartTime), timepointToString(recordStartTime).c_str() );
+	blog(LOG_INFO, "Record end: %lld , %s", timestampToUnixTime(recordEndTime), timepointToString(recordEndTime).c_str() );
+
+	thread t(splitLastRecording);
+	t.detach();
+}
+
+std::string inputFilePath = "";
+
+void splitInputFile()
+{
+	splitClips(	getEntries(), inputFilePath);
+}
+
+void handleSplitInputFileRequest( std::string filePath )
+{
+	blog( LOG_INFO, "Selected file was: inputFilePath%s", filePath.c_str() );	
+
+	FILETIME fileWriteTime;
+	FILETIME creationTime;
+	HANDLE hFile = CreateFile( ConvertUtf8ToWide(filePath).c_str(), GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL);
+	GetFileTime(hFile, &creationTime, NULL, &fileWriteTime);
+	CloseHandle(hFile);
+
+	recordStartTime = FILETIMEtoTimePoint(creationTime);
+	recordEndTime = FILETIMEtoTimePoint(fileWriteTime);
+
+	blog(LOG_INFO, "Video start: %lld, %s ", timestampToUnixTime(recordStartTime), timepointToString(recordStartTime).c_str() );
+	blog(LOG_INFO, "Video end: %lld, %s ", timestampToUnixTime(recordEndTime), timepointToString(recordEndTime).c_str() );
+
+	inputFilePath = filePath;
+
+	thread t(splitInputFile);
+	t.detach();
+}
+
+void processPyPyToolSelected()
+{
+	QString filePath = QFileDialog::getOpenFileName(nullptr, "Select a File", QDir::homePath());
+	if (!filePath.isEmpty()) 
+	{
+		handleSplitInputFileRequest(filePath.toStdString());
+	}
+}
+
+void createMenuItem()
+{
+	QAction *openFileAction = (QAction *)obs_frontend_add_tools_menu_qaction(
+		obs_module_text("Process PyPy"));
+
+    // Connect the menu item to your slot function
+    openFileAction->connect(openFileAction, &QAction::triggered, processPyPyToolSelected);
+	
 }
 
 // Callback for when a recording stops
@@ -655,7 +721,7 @@ obs_frontend_event_cb EventHandler = [](enum obs_frontend_event event, void*)
 
 			// TODO remove testing: 
 			if (USE_TEST_DATA)
-				recordStartTime = vrchatLogTimeToTimePoint("2023.05.10 20:14:15");
+				recordStartTime = vrchatLogTimeToTimePoint("2023.09.06 19:11:58");
 
 			blog(LOG_INFO, "Record start: %lld ", timestampToUnixTime(recordStartTime));
 
@@ -678,17 +744,9 @@ obs_frontend_event_cb EventHandler = [](enum obs_frontend_event event, void*)
 
 			// TODO remove testing: 
 			if (USE_TEST_DATA)
-				recordEndTime = vrchatLogTimeToTimePoint("2023.05.10 22:23:58");
+				recordEndTime = vrchatLogTimeToTimePoint("2023.09.06 21:08:25");
 
-			blog(LOG_INFO, "Record start: %lld, %s ", timestampToUnixTime(recordStartTime), timepointToString(recordStartTime).c_str() );
-			blog(LOG_INFO, "Record end: %lld , %s", timestampToUnixTime(recordEndTime), timepointToString(recordEndTime).c_str() );
-
-			thread t(do_stuff);
-			t.detach();
-
-			//do_stuff();
-			//get_files();
-			//read_file();
+			handleRecordingEnd();
 	
 			break;
 		}
@@ -710,6 +768,8 @@ bool obs_module_load(void)
 	     PLUGIN_VERSION);
 
 	obs_frontend_add_event_callback(EventHandler, NULL);
+
+	createMenuItem();
 
 	return true;
 }
