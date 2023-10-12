@@ -466,9 +466,9 @@ bool splitSingle(string recordingFullPath, string pypyoutputfolder, PyPylogEntry
 	if (next != nullptr)
 	{
 		// It seems to round /down/ to the nearest keyframe, 
-		// so add 1 second of padding to make sure we don't miss anything
+		// so add 5 seconds of padding to make sure we don't miss anything
 		oss << " -to "
-		<< formatDuration( (next->videoTime + chrono::seconds(1) )  );
+		<< formatDuration( (next->videoTime + chrono::seconds(5) )  );
 	}
 
 	oss 
