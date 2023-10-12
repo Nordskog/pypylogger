@@ -25,12 +25,12 @@ class PyPylogEntry
     std::string toLogString();
     bool needsTitleLookup();
 
-    std::chrono::system_clock::duration PyPylogEntry::getTimeFrom( std::chrono::system_clock::time_point fromTime );
-    long long PyPylogEntry::getTimeAsUnixTimestamp();
+    std::chrono::system_clock::duration getTimeFrom( std::chrono::system_clock::time_point fromTime );
+    long long getTimeAsUnixTimestamp();
     bool isBeforeStart();
 
     void setVideoStartTime( std::chrono::system_clock::time_point startTime );
-    void PyPylogEntry::populateYoutubeId();
+    void populateYoutubeId();
 
     private:
 
