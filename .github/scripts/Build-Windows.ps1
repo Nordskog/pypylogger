@@ -33,6 +33,7 @@ function Build {
 
     $ScriptHome = $PSScriptRoot
     $ProjectRoot = Resolve-Path -Path "$PSScriptRoot/../.."
+    $ObsRoot = Resolve-Path -Path "C:\Program Files\obs-studio"
     $BuildSpecFile = "${ProjectRoot}/buildspec.json"
 
     $UtilityFunctions = Get-ChildItem -Path $PSScriptRoot/utils.pwsh/*.ps1 -Recurse
@@ -94,6 +95,7 @@ function Build {
     }
     Log-Information "Install ${ProductName}..."
     Invoke-External cmake --install "build_${script:Target}" --prefix "${ProjectRoot}/release" @CmakeArgs
+    Invoke-External cmake --install "build_${script:Target}" --prefix "${ObsRoot}" @CmakeArgs
 
     Pop-Location -Stack BuildTemp
 }
