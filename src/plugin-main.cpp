@@ -560,15 +560,17 @@ std::vector<PyPylogEntry> getEntries()
 	if (logFiles.empty())
 	{
 		blog(LOG_INFO, "No VRChat logs, returning.");
-		return logEntries;
+		return std::vector<PyPylogEntry>();
 	}
 	
+	// This populates logEntries with all entries up until end time
+	// If we decide none of them are relevant, be sure to return an empty vector
 	read_files(logFiles, logEntries);
 
 	if (logEntries.empty())
 	{
 		blog(LOG_INFO, "No PyPy log entries, returning.");
-		return logEntries;
+		return std::vector<PyPylogEntry>();
 	}
 
 	// Find the first first entr before recordStartTime and set its time to be exactly the same as the start time.
@@ -590,9 +592,9 @@ std::vector<PyPylogEntry> getEntries()
 
 	if ( firstValid == -1)
 	{
-		// No valid entries, return
+		// No valid entries, return empty
 		blog(LOG_INFO, "No PyPy log entries during recording window");
-		return logEntries;
+		return std::vector<PyPylogEntry>();
 	}
 
 	// Create an entry for the very beginning
