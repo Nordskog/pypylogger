@@ -139,7 +139,7 @@ void read_files( vector< pair< string,chrono::system_clock::time_point> > logFil
 	{
 		blog( LOG_INFO, "Parsing logfile %s", logFile.first.c_str());
 
-		std::ifstream file(logFile.first);
+		std::ifstream file(logFile.first, std::ios::binary);
 		if (file.is_open())
 		{
 			std::string line;
