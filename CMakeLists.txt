@@ -6,7 +6,7 @@ set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/scripts/buildsystems
 
 # Change obs-plugintemplate to your plugin's name in a machine-readable format (e.g.:
 # obs-myawesomeplugin) and set
-project(obs-pypylogger VERSION 1.0.0)
+project(obs-pypylogger VERSION 1.2.3)
 add_library(${CMAKE_PROJECT_NAME} MODULE)
 
 # Read api key into var
