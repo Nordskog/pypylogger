@@ -42,6 +42,23 @@ const std::regex YOUTUBE_REGEX_PATTERN(R"((?:http?s:\/\/)(?:www.)?(?:(?:youtube.
         }
     }
 
+   string PyPylogEntry::getYoutubeChapterString()
+   {
+        auto seconds = chrono::duration_cast<std::chrono::seconds>(this->videoTime);
+        auto hours = chrono::duration_cast<std::chrono::hours>(seconds);
+        seconds -= hours;
+
+        auto minutes = chrono::duration_cast<std::chrono::minutes>(seconds);
+        seconds -= minutes;
+
+        std::ostringstream oss;
+        oss << std::setw(2) << std::setfill('0') << hours.count() << ':'
+            << std::setw(2) << std::setfill('0') << minutes.count() << ':'
+            << std::setw(2) << std::setfill('0') << seconds.count();
+
+        return oss.str();
+   }
+
     bool PyPylogEntry::needsTitleLookup()
     {
         return this->title.empty() || this->title.find("Playing Custom URL:") != string::npos;

@@ -25,6 +25,7 @@ class PyPylogEntry
     std::string toLogString();
     bool needsTitleLookup();
 
+    std::string getYoutubeChapterString();
     std::chrono::system_clock::duration getTimeFrom( std::chrono::system_clock::time_point fromTime );
     long long getTimeAsUnixTimestamp();
     bool isBeforeStart();

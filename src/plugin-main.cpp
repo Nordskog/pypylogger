@@ -493,6 +493,31 @@ bool splitSingle(string recordingFullPath, string pypyoutputfolder, PyPylogEntry
 	return true;
 }
 
+void printYoutubeChapters(std::vector<PyPylogEntry>& logEntries, std::filesystem::path outputFolder)
+{
+    // Construct the output file path within the specified folder
+    std::filesystem::path outputPath = outputFolder / "chapters.txt";
+	std::ofstream outputFile(outputPath);
+
+	// Start from 1 instead of 0
+	for (int i = 0; i < logEntries.size(); i++)
+	{
+		PyPylogEntry* current = &(logEntries[i]);
+
+		if ( i == 0)
+		{
+				outputFile << "00:00 " << current->title << '\n';
+		}
+		else 
+		{
+      		auto timeString = current->getYoutubeChapterString();
+        	outputFile << timeString << ' ' << current->title << '\n';
+		}
+	}
+
+	outputFile.close();	
+}
+
 void splitClips(std::vector<PyPylogEntry> logEntries, std::string recordingFilepath)
 {
 	if (logEntries.empty())
@@ -529,6 +554,7 @@ void splitClips(std::vector<PyPylogEntry> logEntries, std::string recordingFilep
 		return;
 	}
 
+	
 	for (int i = 0; i < logEntries.size(); i++)
 	{
 		PyPylogEntry* current = &(logEntries[i]);
@@ -548,6 +574,8 @@ void splitClips(std::vector<PyPylogEntry> logEntries, std::string recordingFilep
 			blog(LOG_INFO, "FFmpeg failed for some reason. Soz.");	
 		}
 	}
+
+	printYoutubeChapters(logEntries, outputFolder);
 
 	blog(LOG_INFO, "Finished splitting recording");
 }
@@ -652,10 +680,10 @@ std::vector<PyPylogEntry> getEntries()
 void setTestingTime()
 {
 	if (USE_TEST_DATA)
-		recordEndTime = vrchatLogTimeToTimePoint("2023.10.12 01:00:00");
+		recordEndTime = vrchatLogTimeToTimePoint("2023.12.21 01:00:00");
 
 	if (USE_TEST_DATA)
-		recordStartTime = vrchatLogTimeToTimePoint("2023.10.11 22:00:00");
+		recordStartTime = vrchatLogTimeToTimePoint("2023.12.20 22:00:00");
 }
 
 void splitLastRecording()
