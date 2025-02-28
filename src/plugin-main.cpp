@@ -149,7 +149,7 @@ void read_files( vector< pair< string,chrono::system_clock::time_point> > logFil
 			{
 				if (line.find( "[VRCX] VideoPlay(VRDancing)" ) != std::string::npos)
 				{
-					//blog( LOG_INFO, "Line: %s", line.c_str() );
+					blog( LOG_INFO, "Line: %s", line.c_str() );
 					bool matched = std::regex_match(line.c_str(), match, log_entry_regex, std::regex_constants::match_default);
 					if ( matched )
 					{
@@ -680,10 +680,10 @@ std::vector<PyPylogEntry> getEntries()
 void setTestingTime()
 {
 	if (USE_TEST_DATA)
-		recordEndTime = vrchatLogTimeToTimePoint("2023.12.21 01:00:00");
+		recordEndTime = vrchatLogTimeToTimePoint("2023.12.21 00:18:14");
 
 	if (USE_TEST_DATA)
-		recordStartTime = vrchatLogTimeToTimePoint("2023.12.20 22:00:00");
+		recordStartTime = vrchatLogTimeToTimePoint("2023.12.20 22:06:53");
 }
 
 void splitLastRecording()
