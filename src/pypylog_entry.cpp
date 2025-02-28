@@ -61,7 +61,8 @@ const std::regex YOUTUBE_REGEX_PATTERN(R"((?:http?s:\/\/)(?:www.)?(?:(?:youtube.
 
     bool PyPylogEntry::needsTitleLookup()
     {
-        return this->title.empty() || this->title.find("Playing Custom URL:") != string::npos;
+        // Custom entries used to contain "Playing custom URL", but now sometimes? just have the url as the title.
+        return this->title.empty() || this->title.find("Playing Custom URL:") != string::npos || this->title == this->url;
     };
 
     bool PyPylogEntry::isBeforeStart()
