@@ -113,6 +113,12 @@ chrono::system_clock::time_point FILETIMEtoTimePoint( FILETIME time )
     return timePoint;
 }
 
+std::string strip_tags(const std::string &input)
+{
+    std::regex tag_regex("<[^>]+>");
+    return std::regex_replace(input, tag_regex, "");
+}
+
 chrono::system_clock::time_point vrchatLogFilenameTimeToTimePoint( string _time )
 {
     // 2023.04.12 23:20:00

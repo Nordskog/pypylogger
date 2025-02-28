@@ -169,6 +169,9 @@ void read_files( vector< pair< string,chrono::system_clock::time_point> > logFil
 							//blog( LOG_INFO, "Url 2: %s", url.c_str() );
 							//blog( LOG_INFO, "Title 3: %s", title.c_str() );
 
+							// Strip xml tags from title
+							title = strip_tags(title);
+
 							PyPylogEntry newEntry = PyPylogEntry(time, url, title);
 							newEntry.setVideoStartTime(recordStartTime);
 
@@ -680,10 +683,10 @@ std::vector<PyPylogEntry> getEntries()
 void setTestingTime()
 {
 	if (USE_TEST_DATA)
-		recordEndTime = vrchatLogTimeToTimePoint("2023.12.21 00:18:14");
+		recordEndTime = vrchatLogTimeToTimePoint("2025.02.27 00:18:14");
 
 	if (USE_TEST_DATA)
-		recordStartTime = vrchatLogTimeToTimePoint("2023.12.20 22:06:53");
+		recordStartTime = vrchatLogTimeToTimePoint("2025.02.26 22:06:53");
 }
 
 void splitLastRecording()

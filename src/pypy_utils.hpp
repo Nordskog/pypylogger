@@ -14,6 +14,8 @@ std::chrono::system_clock::time_point vrchatLogTimeToTimePoint( std::string _tim
 std::chrono::system_clock::time_point vrchatLogFilenameTimeToTimePoint( std::string _time );
 std::chrono::system_clock::time_point FILETIMEtoTimePoint( FILETIME time );
 
+std::string strip_tags(const std::string& input);
+
 long long timestampToUnixTime( std::chrono::system_clock::time_point time  );
 long long durationToSeconds( std::chrono::system_clock::duration dur  );
 std::string formatDuration( std::chrono::system_clock::duration dur  );

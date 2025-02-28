@@ -13,9 +13,9 @@ if ( $DebugPreference -eq 'Continue' ) {
     $InformationPreference = 'Continue'
 }
 
-if ( $env:CI -eq $null ) {
-    throw "Package-Windows.ps1 requires CI environment"
-}
+#if ( $env:CI -eq $null ) {
+#    throw "Package-Windows.ps1 requires CI environment"
+#}
 
 if ( ! ( [System.Environment]::Is64BitOperatingSystem ) ) {
     throw "Packaging script requires a 64-bit system to build and run."
